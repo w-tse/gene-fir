@@ -1,22 +1,36 @@
 
+# coding: utf-8
+
+# In[1]:
+
 import numpy as np
 import time
+from operator import itemgetter
 
-POP_SIZE = 1000
-CULL_TOP = 150
-CULL_BOT = 50
+
+# In[2]:
+
+POP_SIZE = 100
+CULL_TOP = 15
+CULL_BOT = 5
 OFFSPRING_COUNT = POP_SIZE - CULL_TOP - CULL_BOT
 
-GENE_SIZE = 64
+GENE_SIZE = 16
 GENOME_SIZE = 16
 
-GENERATIONS = 10000
+GENERATIONS = 1000
 
-EVAL_LENGTH = 10000
-LOWCUT_IND = 2499
-HIGHCUT_IND = 4499
+
+# In[3]:
+
+EVAL_LENGTH = 1000
+LOWCUT_IND = 249
+HIGHCUT_IND = 449
 EVAL_FREQS = [2**((step+1-EVAL_LENGTH)/(step+1))*2*np.pi for step in range(EVAL_LENGTH)]
 IDEAL_RESP = [0]*LOWCUT_IND + [1]*(HIGHCUT_IND-LOWCUT_IND) + [0]*(EVAL_LENGTH-HIGHCUT_IND)
+
+
+# In[4]:
 
 class Gene:
     def __init__(self, dna=None):
@@ -25,8 +39,12 @@ class Gene:
         self.dna = dna
     
     def mutate(self):
-        mutation = np.random.randn(GENE_SIZE)
+        targets = np.random.choice(2,GENE_SIZE)
+        mutation = np.multiply(np.random.randn(GENE_SIZE),targets)
         self.dna += mutation
+
+
+# In[5]:
 
 class Organism:
     def __init__(self, genome=None):
@@ -46,6 +64,10 @@ class Organism:
         raw_seq = np.concatenate([gene.dna for gene in self.genome])
         return np.concatenate([raw_seq, np.flip(raw_seq,0)])
         
+
+
+# In[8]:
+
 class Generation:
     def __init__(self):
         self.population = [Organism() for i in range(POP_SIZE)]
@@ -61,13 +83,11 @@ class Generation:
 
     @staticmethod
     def total_sse(Hz, frequencies=EVAL_FREQS, ideal_resp=IDEAL_RESP):
-        sse = 0
-        
+        sse = 0       
         for freq in frequencies:
             sse += np.absolute(Hz(freq))**2
-        
         return sse
-    
+        
     # looks at list of current best candidates, finds which one is worst and returns its fitness and index
     @staticmethod
     def status_quo(current_top):
@@ -111,6 +131,14 @@ class Generation:
         lucky = np.random.choice(bottom,CULL_BOT,replace=False)
 
         self.population = fittest+lucky
+        
+    def cull_2(self):
+        fitness_scores = [self.total_sse(self.z_transform(candidate.phenotype)) for candidate in self.population]
+        ranked,  = zip(*sorted(zip(self.populatioin,fitness_scores), key=itemgetter(1)))
+        fittest = ranked[0:CULL_TOP-1]
+        lucky = np.random.choice(ranked[CULL_TOP:-1], CULL_BOT, replace=False)
+        
+        self.population = fittest+lucky
     
     @staticmethod
     def cross(genomes):       
@@ -131,11 +159,13 @@ class Generation:
             self.population[i].mutate()
             
     def cycle(self):
-        self.cull()
+        self.cull_2()
         self.breed()
         self.mutate()
         
 
+
+# In[ ]:
 
 test_gen = Generation()
 start = time.time()
@@ -143,5 +173,14 @@ print('One Cycle')
 test_gen.cycle()
 end = time.time()
 print(end-start)
+
+
+# In[ ]:
+
+
+
+
+# In[ ]:
+
 
 
